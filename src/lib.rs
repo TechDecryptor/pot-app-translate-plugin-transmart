@@ -1,39 +1,54 @@
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::error::Error;
-use urlencoding::encode;
+
+fn init_data(from: &str, to: &str, text: &str) -> Value {
+    return json!({
+        "header": {
+            "fn": "auto_translation",
+            "client_key": "browser-chrome-110.0.0-Mac OS-df4bd4c5-a65d-44b2-a40f-42f34f3535f2-1677486696487"
+        },
+        "type": "plain",
+        "model_category": "normal",
+        "source": {
+            "lang": from,
+            "text_list": [
+                text
+            ]
+        },
+        "target": {
+            "lang": to
+        }
+    });
+}
 
 #[no_mangle]
 pub fn translate(
-    text: &str, // 待翻译文本
-    from: &str, // 源语言
-    to: &str,   // 目标语言
-    // (pot会根据info.json 中的 language 字段传入插件需要的语言代码，无需再次转换)
-    needs: HashMap<String, String>, // 插件需要的其他参数,由info.json定义
+    text: &str,
+    from: &str,
+    to: &str,
+    _needs: HashMap<String, String>,
 ) -> Result<Value, Box<dyn Error>> {
     let client = reqwest::blocking::ClientBuilder::new().build()?;
+    const URL: &str = "https://yi.qq.com/api/imt";
 
-    let mut url = match needs.get("requestPath") {
-        Some(url) => url.to_string(),
-        None => return Err("requestPath not found".into()),
-    };
+    let post_data = init_data(from, to, text);
 
-    if !url.starts_with("http") {
-        url = format!("https://{}", url);
-    }
-
-    let plain_text = text.replace("/", "@@");
-    let encode_text = encode(plain_text.as_str());
-
-    let res: Value = client
-        .get(format!("{url}/api/v1/{from}/{to}/{encode_text}"))
+    let res:Value= client
+        .post(URL)
+        .header("Content-Type", "application/json")
+        .header("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
+        .header("referer", "https://yi.qq.com/zh-CN/index")
+        .body(post_data.to_string())
         .send()?
         .json()?;
-
     fn parse_result(res: Value) -> Option<String> {
-        let result = res.as_object()?.get("translation")?.as_str()?.to_string();
-
-        Some(result.replace("@@", "/"))
+        let mut result = String::new();
+        for line in res.as_object()?.get("auto_translation")?.as_array()? {
+            result.push_str(line.as_str()?);
+            result.push_str("\n");
+        }
+        Some(result.trim().to_string())
     }
     if let Some(result) = parse_result(res) {
         return Ok(Value::String(result));
@@ -47,8 +62,7 @@ mod tests {
     use super::*;
     #[test]
     fn try_request() {
-        let mut needs = HashMap::new();
-        needs.insert("requestPath".to_string(), "lingva.pot-app.com".to_string());
+        let needs = HashMap::new();
         let result = translate("你好 世界！", "auto", "en", needs).unwrap();
         println!("{result}");
     }
