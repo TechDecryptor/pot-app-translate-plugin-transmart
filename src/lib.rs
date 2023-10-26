@@ -31,7 +31,7 @@ pub fn translate(
     _needs: HashMap<String, String>,
 ) -> Result<Value, Box<dyn Error>> {
     let client = reqwest::blocking::ClientBuilder::new().build()?;
-    const URL: &str = "https://yi.qq.com/api/imt";
+    const URL: &str = "https://transmart.qq.com/api/imt";
 
     let post_data = init_data(from, to, text);
 
@@ -39,7 +39,7 @@ pub fn translate(
         .post(URL)
         .header("Content-Type", "application/json")
         .header("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
-        .header("referer", "https://yi.qq.com/zh-CN/index")
+        .header("referer", "https://transmart.qq.com/zh-CN/index")
         .body(post_data.to_string())
         .send()?
         .json()?;
