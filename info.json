@@ -1,5 +1,5 @@
 {
-  "id": "[plugin].com.TechDecryptor.transmart",
+  "id": "plugin.com.TechDecryptor.transmart",
   "plugin_type": "translate",
   "icon": "transmart.svg",
   "display": "腾讯交互翻译",
